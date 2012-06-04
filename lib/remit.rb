@@ -52,8 +52,43 @@ require 'remit/operations/settle_debt'
 require 'remit/operations/subscribe_for_caller_notification'
 require 'remit/operations/unsubscribe_for_caller_notification'
 require 'remit/operations/write_off_debt'
+require 'remit/operations/get_purchase_contract'
 
 module Remit
+  class CbaAPI < Relax::Service
+
+    include GetPurchaseContract
+
+    API_ENDPOINT = 'https://payments.amazon.com/cba/api/purchasecontract/'.freeze
+    API_SANDBOX_ENDPOINT = 'https://payments-sandbox.amazon.com/cba/api/purchasecontract/'.freeze
+    API_VERSION = Date.new(2010, 8, 31).to_s.freeze
+    SIGNATURE_VERSION = 2.freeze
+    SIGNATURE_METHOD = "HmacSHA256".freeze
+
+    attr_reader :access_key
+    attr_reader :api_endpoint
+    attr_reader :secret_key
+    attr_reader :api_endpoint
+
+    def initialize(access_key, secret_key, sandbox=false)
+      @access_key = access_key
+      @secret_key = secret_key
+      @api_endpoint = sandbox ? API_SANDBOX_ENDPOINT : API_ENDPOINT
+      super(@api_endpoint)
+    end
+    
+    private
+
+    # called from Relax::Service#call
+    def query(request)
+      params = request.to_query.merge(
+        :AWSAccessKeyId => @access_key,
+        :Version => API_VERSION,
+        :Timestamp => Time.now.utc.strftime('%Y-%m-%dT%H:%M:%SZ')
+      )
+      ApiQuery.new(@endpoint, @secret_key, params)
+    end
+  end
   class API < Relax::Service
 
     include VerifySignature
